@@ -14,6 +14,12 @@ def convert_excel_to_csv(pathToExcelFile, pathToCSVFile):
     read_file = pd.read_excel(pathToExcelFile)
     read_file.to_csv(pathToCSVFile, index = None, header=True)
 
+# Returns a pandas dataframe of csv file
+def convert_csv_to_pdf(pathToCSVFile):
+    return pd.csv_read(pathToCSVFile)
+
+ 
+
 
 
 convert_excel_to_csv(path_to_excel, path_to_csv)
