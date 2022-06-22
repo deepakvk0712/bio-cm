@@ -8,11 +8,14 @@ Description: This function takes the latitude and longitude value of a given poi
 # Packages that need to be imported
 import geopy.distance
 import pandas as pd
+import requests
+from datetime import datetime, timedelta
 
 gainesville_coord = (34.298409, -83.832855)
 # coords_1 = (52.2296756, 21.0122287)
 # coords_2 = (52.406374, 16.9251681)
 path_to_csv = "/Users/deepak/Desktop/biocm/Code/bio-cm/data/FAWN_stations.csv"
+URL = "https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_YEAR/"
 
 
 def distance_to_station(inputStation, checkStation):
@@ -76,9 +79,36 @@ def get_closest_station(inputStation, path_to_csv):
     # Returning the selected stations pandas dataframe here
     return selected_stations
 
-# Writing a function which goes to Fawn website and gets the dataset for the selected station
-# def get_data_from_station(selected_stations):
+# Writing a function which goes which fetches the dataset from the csv files available per weather station for the given station
+# Currently only fetching from FAWN station
+def get_data_from_station(selected_stations, source):
+    # The list below contains all the years for which we are trying to get the data for the current station
+    y = datetime.today().year
+    years = list(range(y, y - 51, -1))
+    print(years)
+
+
+    # dateList = pd.date_range(datetime.today(), periods=18250).to_pydatetime().tolist()
+    base = datetime.today()
+    dateList = [base - timedelta(days=x) for x in range(18250)]
+    for i in range(len(dateList)):
+        dateList[i] = dateList[i].strftime("%Y-%m-%d")
+    # print(dateList)
+
+    # We are downloading all the possible data available from FAWN below (all years adn all stations per day)
+    if source == "FAWN":
+        curYear = years[0]
+        while curYear > selected_stations["Start Date"]:
+            # extensionFlag = True
+            # try:
+            #     r = requests.get(URL + )
+            
+        # Going to Faw website (FTP) and getting the files for each year
+
+
+    # Fetching the daily update for all stations year wise
+
     
 
 # print(distance_to_station(coords_1, coords_2))
-get_closest_station(gainesville_coord, path_to_csv)
+get_data_from_station(gainesville_coord, path_to_csv)
