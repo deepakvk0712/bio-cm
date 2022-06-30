@@ -9,7 +9,13 @@ Description: This function takes the latitude and longitude value of a given poi
 import geopy.distance
 import pandas as pd
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+import os
+import zipfile
+from io import BytesIO
+import csv, ssl
+from urllib.request import urlopen
+import shutil
 
 gainesville_coord = (34.298409, -83.832855)
 # coords_1 = (52.2296756, 21.0122287)
@@ -74,14 +80,15 @@ def get_closest_station(inputStation, path_to_csv):
     selected_stations = df.loc[df['distance'] == mini]
     print(selected_stations)
     # print(dist)
-    # print(type(selected_stations))
+    print("This is very special value  "  + str(int(selected_stations['Station ID'])))
 
     # Returning the selected stations pandas dataframe here
-    return selected_stations
+    # return selected_stations
+    return int(selected_stations['Station ID'])
 
 # Writing a function which goes which fetches the dataset from the csv files available per weather station for the given station
 # Currently only fetching from FAWN station
-def get_data_from_station(selected_stations, source):
+def get_data_from_station(selected_station, source):
     # The list below contains all the years for which we are trying to get the data for the current station
     y = datetime.today().year
     years = list(range(y, y - 51, -1))
@@ -95,15 +102,111 @@ def get_data_from_station(selected_stations, source):
         dateList[i] = dateList[i].strftime("%Y-%m-%d")
     # print(dateList)
 
+    data = []
+    data_df = pd.DataFrame()
+    data_of_selected_station = pd.DataFrame()
+    
     # We are downloading all the possible data available from FAWN below (all years adn all stations per day)
     if source == "FAWN":
-        curYear = years[0]
-        while curYear > selected_stations["Start Date"]:
-            # extensionFlag = True
-            # try:
-            #     r = requests.get(URL + )
+
+        # Reference links that show URL structure of the various FAWN files
+        # https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_YEAR/1997_daily.csv.zip
+        # https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_YEAR/2022_daily.csv
+
+
+        # Going to Fawn website (FTP) and getting the files for each year
+        i = 1997
+
+        if (not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None)):
+                ssl._create_default_https_context = ssl._create_unverified_context
+
+        while i <= 2020:
+            # Creating the path for each file
+            path_to_file = URL + str(i) + '_daily.csv.zip'
+            path_to_file_1 = URL + str(i) + '_daily.zip'
+            path_to_file_2 = URL + str(i) + '_daily.csv'
+
+            # Creating a new directory to store the zip files
+            mypath = "/Users/deepak/Desktop/biocm/Code/bio-cm/Fawn_Generated_Zip"
+            if not os.path.isdir(mypath):
+                os.makedirs(mypath)
+
+            resp = requests.get(path_to_file)
+            if i<=2012 and resp.ok:
+                # Below method is extracting the zip files correctly.
+                zf = zipfile.ZipFile(BytesIO(resp.content))
+                zf.extractall(mypath)
+                i+=1
+                continue
+
+            resp = requests.get(path_to_file_1)
+            if i>2012 and i<=2020 and resp.ok:
+                # Below method is extracting the zip files correctly.
+                zf = zipfile.ZipFile(BytesIO(resp.content))
+                zf.extractall(mypath)
+
+                # os.remove(mypath + '/' + str(i) + '_daily.zip')
+                
+                i+=1
+                continue
+
+            # resp = requests.get(path_to_file_2)
+            # if i>2020 and resp.ok:
+            #     df_temp = pd.read_csv(path_to_file_2)
+            #     df_temp.to_csv(mypath + '/' + str(i) + '.csv')
+            #     # data.append(df_temp)
+            #     i+=1
+            #     continue
+
+        # resetting date so we can form the entire dataset
+        i = 1997
+
+        # Currently we are only considering till year 2020 as the headers and csv file headings have changed for 2021 and 2022.
+        # date.today().year
+        while i <= 2020:
+            if i<=2007:
+                df_temp = pd.read_csv(mypath + '/' + str(i) + '_daily.csv')
+                data.append(df_temp)
+                i+=1
+                continue
+            if i>2007 and i<=2020:
+                df_temp = pd.read_csv(mypath + '/' + str(i) + '_daily' + '/' + str(i) + '-1.csv')
+                data.append(df_temp)
+                df_temp = pd.read_csv(mypath + '/' + str(i) + '_daily' + '/' + str(i) + '-2.csv')
+                data.append(df_temp)
+                i+=1  
+                continue
+
+            # Currently not reading the data from 2021 and 2022 as the csv format has been changed in these years. Need to figure out what changes to make.
+
+            # if i > 2020:
+            #     df_temp = pd.read_csv(URL + str(i) + '_daily.csv')
+            #     if i == 2022:
+            #         df_temp['Date Time'] = df_temp['Date Time'].str[:10]
+            #     data.append(df_temp)
+            #     i+=1
+            #     continue
             
-        # Going to Faw website (FTP) and getting the files for each year
+        
+        data_df = pd.concat(data, ignore_index = True)
+        data_df.to_csv(mypath + '/' + 'final.csv')
+
+        # We are extracting all data for the weather station available (From earliest possible date)
+        data_of_selected_station = data_df.loc[data_df['StationID'] == selected_station]
+
+    print(data_of_selected_station)
+    return data_of_selected_station
+
+
+
+        
+        
+            
+
+
+
+
+
 
 
     # Fetching the daily update for all stations year wise
@@ -111,4 +214,4 @@ def get_data_from_station(selected_stations, source):
     
 
 # print(distance_to_station(coords_1, coords_2))
-get_data_from_station(gainesville_coord, path_to_csv)
+get_data_from_station(get_closest_station(gainesville_coord, path_to_csv), "FAWN")
