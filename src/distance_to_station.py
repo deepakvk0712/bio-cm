@@ -22,6 +22,7 @@ gainesville_coord = (34.298409, -83.832855)
 # coords_2 = (52.406374, 16.9251681)
 path_to_csv = "/Users/deepak/Desktop/biocm/Code/bio-cm/data/FAWN_stations.csv"
 URL = "https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_YEAR/"
+required_fields = ['']
 
 
 def distance_to_station(inputStation, checkStation):
@@ -192,10 +193,29 @@ def get_data_from_station(selected_station, source):
         data_df.to_csv(mypath + '/' + 'final.csv')
 
         # We are extracting all data for the weather station available (From earliest possible date)
-        data_of_selected_station = data_df.loc[data_df['StationID'] == selected_station]
+        data_of_selected_station_all = data_df.loc[data_df['StationID'] == selected_station]
+
+        #Keeping only columns that we need for our analysis, dropping non essential columns
+        data_of_selected_station = drop_non_required_fields(data_of_selected_station_all)
 
     print(data_of_selected_station)
     return data_of_selected_station
+
+# oakwood silicon valley
+def drop_non_required_fields(data_of_selected_station):
+    # This function drops the non essential fields
+    allowed_fields = ['StationID', 'date', 'avg_rfd_2m_wm2', 'sum_rain_2m_inches', 'min_temp_air_60cm_C', 'max_temp_air_60cm_C', 'min_temp_air_2m_C', 'max_temp_air_2m_C', 'min_temp_air_10m_C', 'max_temp_air_10m_C']
+    modified_df = data_of_selected_station[allowed_fields]
+    return modified_df
+
+
+# def fill_missing_value(data_of_selected_station):
+
+
+# def convert_data_to_metric(data_of_selected_station):
+# This function basically drops unwanted fields and converts the values into required unit. The input to the function is a dataframe.
+
+
 
 
 
