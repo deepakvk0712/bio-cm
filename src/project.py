@@ -27,7 +27,7 @@ gainesville_myplace = Point(user_coordinates[0], user_coordinates[1], 70)
 
 
 path_to_FAWN_station_csv = "/Users/deepak/Desktop/biocm/Code/bio-cm/data/FAWN_stations.csv"
-mypath = mypath = "/Users/deepak/Desktop/biocm/Code/bio-cm/Fawn_Generated_Zip"
+mypath = "/Users/deepak/Desktop/biocm/Code/bio-cm/Fawn_Generated_Zip"
 URL = "https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_YEAR/"
 required_fields = ['StationID', 'date', 'avg_rfd_2m_wm2', 'sum_rain_2m_inches', 'min_temp_air_60cm_C', 'max_temp_air_60cm_C', 'min_temp_air_2m_C', 'max_temp_air_2m_C', 'min_temp_air_10m_C', 'max_temp_air_10m_C']
 
