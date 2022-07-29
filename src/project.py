@@ -5,24 +5,30 @@ Output:
 Description: This function takes the latitude and longitude value of a given point nad returns the closest weather station to the location. The function checks in increasing distance bubbles. First, a check is made to see is there is any weather station within 5 kilometers to the location, then 10 kilometers, finally 20 kilometers.
 """
 
+import csv
+import os
+import shutil
+import ssl
+import zipfile
+from datetime import date, datetime, timedelta
+from io import BytesIO
+from urllib.request import urlopen
+
 # Packages that need to be imported
 import geopy.distance
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import requests
-from datetime import datetime, timedelta, date
-import os
-import zipfile
-from io import BytesIO
-import csv, ssl
-from urllib.request import urlopen
-import shutil
+from meteostat import Point, Daily
 
-gainesville_coord = (34.298409, -83.832855)
-# coords_1 = (52.2296756, 21.0122287)
-# coords_2 = (52.406374, 16.9251681)
-path_to_csv = "/Users/deepak/Desktop/biocm/Code/bio-cm/data/FAWN_stations.csv"
+user_coordinates = (34.298409, -83.832855)
+gainesville_myplace = Point(user_coordinates[0], user_coordinates[1], 70)
+
+
+path_to_FAWN_station_csv = "/Users/deepak/Desktop/biocm/Code/bio-cm/data/FAWN_stations.csv"
 URL = "https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/BY_YEAR/"
-required_fields = ['']
+required_fields = ['StationID', 'date', 'avg_rfd_2m_wm2', 'sum_rain_2m_inches', 'min_temp_air_60cm_C', 'max_temp_air_60cm_C', 'min_temp_air_2m_C', 'max_temp_air_2m_C', 'min_temp_air_10m_C', 'max_temp_air_10m_C']
 
 
 def distance_to_station(inputStation, checkStation):
@@ -31,9 +37,9 @@ def distance_to_station(inputStation, checkStation):
 
 
 # inputStation, allStations  ----> arguments
-def get_closest_station(inputStation, path_to_csv):
+def get_closest_station(my_coordinates, path_to_FAWN_station_csv):
     # The function takes two inputs. First tuple contains location longitude and latitude and the other is a list of stations - contains station ID, station name, latitude and longitude of the station.
-    df = pd.read_csv(path_to_csv)
+    df = pd.read_csv(path_to_FAWN_station_csv)
 
     # Converting the W , N symbols in the latitudes and longitude values
     lat = []
@@ -59,17 +65,11 @@ def get_closest_station(inputStation, path_to_csv):
     df["longitude"] = lng
 
 
-    # print(df)
-    # print(type(df.loc[:,'Latitude (deg)']))
-    # print(row['Latitude (deg)'], row['Longitude (deg)'])
-    # print(df["Latitude"])
-
-
     # Finding the distance of each station from the given location
-    # df["distance"] = distance_to_station(gainesville_coord, (df.loc[:,'latitude'], df.loc[:,'longitude']))
+    # df["distance"] = distance_to_station(user_coordinates, (df.loc[:,'latitude'], df.loc[:,'longitude']))
     dist = []
     for i in range (len(df)):
-        dist.append(distance_to_station(gainesville_coord, (df["latitude"].values[i], df["longitude"].values[i])))
+        dist.append(distance_to_station(my_coordinates, (df["latitude"].values[i], df["longitude"].values[i])))
     
 
     df["distance"] = dist
@@ -79,9 +79,6 @@ def get_closest_station(inputStation, path_to_csv):
     mini_index = dist.index(mini)
 
     selected_stations = df.loc[df['distance'] == mini]
-    print(selected_stations)
-    # print(dist)
-    print("This is very special value  "  + str(int(selected_stations['Station ID'])))
 
     # Returning the selected stations pandas dataframe here
     # return selected_stations
@@ -93,7 +90,7 @@ def get_data_from_station(selected_station, source):
     # The list below contains all the years for which we are trying to get the data for the current station
     y = datetime.today().year
     years = list(range(y, y - 51, -1))
-    print(years)
+    # print(years)
 
 
     # dateList = pd.date_range(datetime.today(), periods=18250).to_pydatetime().tolist()
@@ -101,7 +98,7 @@ def get_data_from_station(selected_station, source):
     dateList = [base - timedelta(days=x) for x in range(18250)]
     for i in range(len(dateList)):
         dateList[i] = dateList[i].strftime("%Y-%m-%d")
-    # print(dateList)
+
 
     data = []
     data_df = pd.DataFrame()
@@ -198,40 +195,101 @@ def get_data_from_station(selected_station, source):
         #Keeping only columns that we need for our analysis, dropping non essential columns
         data_of_selected_station = drop_non_required_fields(data_of_selected_station_all)
 
-    print(data_of_selected_station)
-    return data_of_selected_station
+        #Filling missing values using data from meteostat
+        data_meteo_filled_missing_data = fill_missing_values(data_of_selected_station)
 
-# oakwood silicon valley
+    # print(data_of_selected_station)
+    return data_meteo_filled_missing_data
+
+
+# This function basically drops unwanted fields and converts the values into required unit. The input to the function is a dataframe.
 def drop_non_required_fields(data_of_selected_station):
     # This function drops the non essential fields
-    allowed_fields = ['StationID', 'date', 'avg_rfd_2m_wm2', 'sum_rain_2m_inches', 'min_temp_air_60cm_C', 'max_temp_air_60cm_C', 'min_temp_air_2m_C', 'max_temp_air_2m_C', 'min_temp_air_10m_C', 'max_temp_air_10m_C']
-    modified_df = data_of_selected_station[allowed_fields]
+    df = pd.read_csv(path_to_FAWN_station_csv)
+    modified_df = data_of_selected_station[required_fields]
     return modified_df
 
 
-# def fill_missing_value(data_of_selected_station):
+# modified_df, selected_station, path_to_FAWN_station_csv ---> Params
+def fill_missing_values(data_of_selected_station):
+    FAWN_station_path_to_csv = path_to_FAWN_station_csv
+    FAWN_stations_info_df = pd.read_csv(FAWN_station_path_to_csv)
+    # print(FAWN_stations_info_df)
 
 
-# def convert_data_to_metric(data_of_selected_station):
-# This function basically drops unwanted fields and converts the values into required unit. The input to the function is a dataframe.
+    # Below code is for getting all rows which have a NAN value or an empty value
+    df = data_of_selected_station.replace(' ', np.nan)                   # to get rid of empty values
+    nan_values = df[df.isna().any(axis=1)]         # to get all rows with Na
+
+    # df = data_of_selected_station.fillna(-999) 
 
 
+    # print(nan_values)
+
+    if (not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None)):
+        ssl._create_default_https_context = ssl._create_unverified_context
+
+    for index in nan_values.index:
+        # if index == 7961:
+        daily_date = data_of_selected_station.iloc[index]['date'].split("-")
+
+        indiv_stationID = data_of_selected_station.iloc[index]['StationID']
+
+        #Getting latitude and longitude from the station ID
+        # station_latitude = FAWN_stations_info_df.loc[FAWN_stations_info_df['Station ID'] == indiv_stationID]['Latitude (deg)']
+        # station_longitude = FAWN_stations_info_df.loc[FAWN_stations_info_df['Station ID'] == indiv_stationID]['Longitude (deg)']
+
+        #Getting the data for the users location (latitude, longtiude)
+        cur_date = datetime(int(daily_date[0]), int(daily_date[1]), int(daily_date[2]))
+        daily_data = Daily(gainesville_myplace, cur_date, cur_date)
+
+        daily_data = daily_data.fetch()
 
 
+        if (np.isnan(data_of_selected_station.iloc[index]['min_temp_air_2m_C']) or np.isnan(data_of_selected_station.iloc[index]['min_temp_air_60cm_C']) or np.isnan(data_of_selected_station.iloc[index]['min_temp_air_10m_C'])):
+            if daily_data['tmin'].isnull().values.any() == False:
+                data_of_selected_station.iloc[index]['min_temp_air_60cm_C'] = daily_data['tmin']
+                data_of_selected_station.iloc[index]['min_temp_air_2m_C'] = daily_data['tmin']
+                data_of_selected_station.iloc[index]['min_temp_air_10m_C'] = daily_data['tmin']
 
+
+        if (np.isnan(data_of_selected_station.iloc[index]['max_temp_air_60cm_C']) or np.isnan(data_of_selected_station.iloc[index]['max_temp_air_2m_C']) or np.isnan(data_of_selected_station.iloc[index]['max_temp_air_10m_C'])):
+            if daily_data['tmax'].isnull().values.any() == False:
+                data_of_selected_station.iloc[index]['max_temp_air_60cm_C'] = daily_data['tmax']
+                data_of_selected_station.iloc[index]['max_temp_air_2m_C'] = daily_data['tmax']
+                data_of_selected_station.iloc[index]['max_temp_air_10m_C'] = daily_data['tmax']
+
+
+        if (np.isnan(data_of_selected_station.iloc[index]['sum_rain_2m_inches'])):
+            if daily_data['prcp'].isnull().values.any() == False:
+                data_of_selected_station.iloc[index]['sum_rain_2m_inches'] = daily_data['prcp']*(0.0394)
+
+
+        # if (np.isnan(data_of_selected_station.iloc[index]['avg_temp_air_60cm_C']) or np.isnan(data_of_selected_station.iloc[index]['avg_temp_air_2m_C']) or np.isnan(data_of_selected_station.iloc[index]['avg_temp_air_10m_C'])):
+        #     if daily_data['tavg'].isnull().values.any() == False:
+        #         data_of_selected_station.iloc[index]['avg_temp_air_60cm_C'] = daily_data['tavg']
+        #         data_of_selected_station.iloc[index]['avg_temp_air_2m_C'] = daily_data['tavg']
+        #         data_of_selected_station.iloc[index]['avg_temp_air_10m_C'] = daily_data['tavg']
+
+
+        # if (np.isnan(data_of_selected_station.iloc[index]['avg_wind_speed_10m_mph']) or np.isnan(data_of_selected_station.iloc[index]['wind_speed_max_10m_mph'])):
+        #     if daily_data['wspd'].isnull().values.any() == False:
+        #         data_of_selected_station.iloc[index]['avg_wind_speed_10m_mph'] = daily_data['wspd'] * (0.621)
+        #         data_of_selected_station.iloc[index]['wind_speed_max_10m_mph'] = daily_data['wspd'] * (0.621)
         
-        
-            
+        # if (np.isnan(data_of_selected_station.iloc[index]['wind_direction_10m_deg'])):
+        #     if daily_data['wdir'].isnull().values.any() == False:  
+        #         data_of_selected_station.iloc[index]['wind_direction_10m_deg'] = daily_data['wdir']
+
+    print(data_of_selected_station)
+    return data_of_selected_station
 
 
+def main():
+    stationID = get_closest_station(user_coordinates, path_to_FAWN_station_csv)
+    final_df = get_data_from_station(stationID, "FAWN")
+    final_df.to_csv('output.csv')
+    return final_df
 
 
-
-
-
-    # Fetching the daily update for all stations year wise
-
-    
-
-# print(distance_to_station(coords_1, coords_2))
-get_data_from_station(get_closest_station(gainesville_coord, path_to_csv), "FAWN")
+main()
