@@ -232,9 +232,14 @@ def fill_missing_values(data_of_selected_station):
 
     for index in nan_values.index:
         # if index == 7961:
-        daily_date = data_of_selected_station.iloc[index]['date'].split("-")
-
-        indiv_stationID = data_of_selected_station.iloc[index]['StationID']
+        try:
+            daily_date = data_of_selected_station.iloc[index]['date'].split("-")
+        except:
+            continue
+        try:
+            indiv_stationID = data_of_selected_station.iloc[index]['StationID']
+        except:
+            continue
 
         #Getting latitude and longitude from the station ID
         # station_latitude = FAWN_stations_info_df.loc[FAWN_stations_info_df['Station ID'] == indiv_stationID]['Latitude (deg)']
@@ -282,7 +287,7 @@ def fill_missing_values(data_of_selected_station):
         #     if daily_data['wdir'].isnull().values.any() == False:  
         #         data_of_selected_station.iloc[index]['wind_direction_10m_deg'] = daily_data['wdir']
 
-    print(data_of_selected_station)
+    # print(data_of_selected_station)
     return data_of_selected_station
 
 
