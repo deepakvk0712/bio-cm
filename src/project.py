@@ -5,6 +5,7 @@ Output:
 Description: This function takes the latitude and longitude value of a given point nad returns the closest weather station to the location. The function checks in increasing distance bubbles. First, a check is made to see is there is any weather station within 5 kilometers to the location, then 10 kilometers, finally 20 kilometers.
 """
 
+from pandas_profiling import ProfileReport
 import csv
 import os
 import shutil
@@ -13,7 +14,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 from io import BytesIO
 from urllib.request import urlopen
-
+import IPython
 # Packages that need to be imported
 import geopy.distance
 import matplotlib.pyplot as plt
@@ -295,6 +296,10 @@ def main():
     stationID = get_closest_station(user_coordinates, path_to_FAWN_station_csv)
     final_df = get_data_from_station(stationID, "FAWN")
     final_df.to_csv('output.csv')
+    df1 = pd.read_csv("output.csv")
+    profile = ProfileReport(df1, title="Pandas Profiling Report", explorative=True)
+    profile.to_notebook_iframe()
+    profile.to_file("your_report.html")
     return final_df
 
 
